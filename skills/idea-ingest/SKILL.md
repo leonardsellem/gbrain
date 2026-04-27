@@ -48,7 +48,9 @@ Format: `- **YYYY-MM-DD** | Referenced in [page title](path) — brief context`
 
 ## Phases
 
-1. **Fetch the content.** Use appropriate tools for the content type (web fetch for articles, API for tweets, PDF reader for documents).
+1. **Fetch the content.** Use appropriate tools for the content type (web fetch for articles, PDF reader for documents). **For every `x.com` / `twitter.com` post, always fetch the full post through the X API before answering or ingesting. Do not rely on web snippets, X web HTML, screenshots, or search-result summaries as a substitute.** In this OpenClaw/GBrain setup, use the workspace X skill helper when available:
+   `python /home/codex/gbrain-brain/skills/x-sync-poll/scripts/fetch_tweet.py <x-url-or-tweet-id>`.
+   If the X API fetch fails because auth/rate limit/access is unavailable, say that explicitly and ask for the missing content or permission to retry; do not proceed as if the post was fetched.
 
 2. **Upload raw source.** Save the fetched content for provenance: `gbrain files upload-raw <file> --page <slug>`
 
