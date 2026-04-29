@@ -1,6 +1,94 @@
 # Changelog
 
 All notable changes to GBrain will be documented in this file.
+## [0.22.7] - 2026-04-28
+
+## **Built-in HTTP transport with bearer auth for remote MCP.**
+## **Postgres-backed tokens, default-deny CORS, two-bucket rate limit, body cap, per-request audit.**
+
+v0.22.7 ships `gbrain serve --http`: a built-in HTTP transport for remote MCP, authenticating via the existing `access_tokens` table that `gbrain auth create/list/revoke` already manages. Bearer-only, no OAuth surface, no registration endpoint, no self-service tokens. SECURITY.md is the canonical reference for the hardening posture and recommended deployment.
+
+The hardening lives inside the transport, not in the doc:
+
+| Layer | Default | Configurable via |
+|---|---|---|
+| CORS | default-deny (no `Access-Control-Allow-Origin`) | `GBRAIN_HTTP_CORS_ORIGIN=a.com,b.com` |
+| Pre-auth IP rate limit | 30 req / 60s | `GBRAIN_HTTP_RATE_LIMIT_IP` |
+| Post-auth token rate limit | 60 req / 60s | `GBRAIN_HTTP_RATE_LIMIT_TOKEN` |
+| Body cap | 1 MiB, stream-counted | `GBRAIN_HTTP_MAX_BODY_BYTES` |
+| `last_used_at` debounce | once per token per 60s | (SQL-level WHERE clause, race-tolerant) |
+| Per-request audit | `mcp_request_log` row per `/mcp` | (existing schema, since v4) |
+| Reverse-proxy trust | off | `GBRAIN_HTTP_TRUST_PROXY=1` to honor X-Forwarded-For |
+
+The IP rate-limit fires **before** the auth lookup so the limit caps load on the auth path itself, not just response codes. The token-id rate limit fires after auth so a runaway authenticated client gets throttled at the right principal. Both buckets live in a bounded LRU map (default 10K keys, TTL prune at 2× window) so unique-key growth can't drift into memory pressure.
+
+### What changed for users
+
+You can now expose GBrain remotely with the built-in transport:
+
+```bash
+gbrain auth create my-laptop                    # tokens managed via the existing CLI
+gbrain serve --http --port 8787                  # Postgres-only; PGLite users see a clear fail-fast
+ngrok http 8787 --url your-brain.ngrok.app       # any tunnel works
+```
+
+Then point Claude Desktop, claude.ai/code, or any MCP client at `http://your-tunnel/mcp` with `Authorization: Bearer <token>`. CORS, rate limits, and body caps are on by default. `gbrain auth` is now wired into the main CLI, so it works from the compiled binary the same as `gbrain doctor` or `gbrain serve`.
+
+### For contributors
+
+- `src/mcp/dispatch.ts` (new) — shared `dispatchToolCall(engine, name, params, opts)` consumed by both stdio (`server.ts`) and HTTP (`http-transport.ts`). One source of truth for `validateParams`, `OperationContext` construction, and handler invocation, so the two transports can't drift apart.
+- `src/mcp/rate-limit.ts` (new) — bounded-LRU token-bucket. Tracks `lastTouchedMs` separately from `lastRefillMs` so an exhausted key can't be reset by hammering past the TTL.
+- `src/mcp/http-transport.ts` — built on the new dispatch + rate-limit modules. `application/json` response shape (gbrain MCP tools are synchronous; the Streamable HTTP transport spec allows JSON for non-streaming responses).
+- `src/cli.ts` + `src/commands/auth.ts` — `auth` is now a wired CLI subcommand. Direct-script usage (`bun run src/commands/auth.ts ...`) still works for environments without a compiled binary.
+- 23 unit cases in `test/http-transport.test.ts`, 8 E2E cases in `test/e2e/http-transport.test.ts`. Unit covers the full dispatch round-trip with a real operation; E2E covers `last_used_at` debounce against real Postgres semantics.
+
+### Known limits
+
+- `gbrain serve --http` is **Postgres-only**. PGLite has no `access_tokens` or `mcp_request_log` table by design (`src/core/pglite-schema.ts:5-6`). Local agents continue to use stdio (`gbrain serve`).
+- Behind a tunnel (ngrok, Tailscale Funnel, Cloudflare Tunnel), all requests share one egress IP. The pre-auth IP bucket becomes effectively shared by all clients on that tunnel; the token-id bucket is the load-bearing limiter for tunnel deployments. Documented in SECURITY.md.
+
+### Itemized changes
+
+- New: `gbrain serve --http [--port N]` ships the built-in HTTP transport
+- New: `gbrain auth create/list/revoke/test` wired into the main CLI (was a standalone script)
+- New: SECURITY.md documents the disclosure path, the recommended remote-MCP setup, and the full hardening reference
+- New: `src/mcp/dispatch.ts` — shared dispatch path for stdio + HTTP
+- New: `src/mcp/rate-limit.ts` — bounded-LRU token-bucket limiter
+- Hardening: CORS default-deny, two-bucket rate limit (per-IP pre-auth + per-token post-auth), 1 MiB body cap with stream-counted enforcement, `mcp_request_log` per-request audit, `last_used_at` SQL-level debounce
+- Tests: 23 unit + 8 E2E covering auth, dispatch, CORS, body cap, rate limit, and audit
+- Docs: SECURITY.md, DEPLOY.md, and per-client setup guides updated to recommend `--http` and document the env vars
+
+## To take advantage of v0.22.7
+
+`gbrain upgrade` should do this automatically. If it didn't, or if you want to expose your brain over HTTP:
+
+1. **Confirm migrations are at v4 or higher** (the `access_tokens` + `mcp_request_log` tables were added in migration v4):
+   ```bash
+   gbrain doctor              # schema_version check should pass
+   gbrain apply-migrations --yes  # if not, run this
+   ```
+2. **Create a token for each remote client:**
+   ```bash
+   gbrain auth create my-laptop     # prints the token once — copy it
+   ```
+3. **Start the HTTP server:**
+   ```bash
+   gbrain serve --http --port 8787
+   ```
+4. **(Optional) configure CORS allowlist if a browser client will hit it:**
+   ```bash
+   GBRAIN_HTTP_CORS_ORIGIN=https://claude.ai gbrain serve --http --port 8787
+   ```
+5. **(Optional) audit who's hitting your brain:**
+   ```bash
+   psql $DATABASE_URL -c "SELECT created_at, token_name, operation, status, latency_ms
+                          FROM mcp_request_log ORDER BY created_at DESC LIMIT 50"
+   ```
+6. **If `gbrain serve --http` exits with "Postgres engine required":** PGLite is local-only by design. Either keep using stdio (`gbrain serve`) for local agents, or migrate to Postgres (`gbrain migrate --to supabase`).
+
+If anything breaks: `gbrain doctor`, `~/.gbrain/upgrade-errors.jsonl` (if present), and please file an issue at https://github.com/garrytan/gbrain/issues with both.
+
+
 
 ## [0.22.6.1] - 2026-04-26
 
