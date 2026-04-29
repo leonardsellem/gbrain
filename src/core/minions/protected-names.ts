@@ -20,6 +20,9 @@ export const PROTECTED_JOB_NAMES: ReadonlySet<string> = new Set([
   // trusted local `submit_job` (ctx.remote=false) can insert these rows.
   'subagent',
   'subagent_aggregator',
+  // Async ingest can spend inference and embedding budget in workers. Only the
+  // local CLI/hook path may submit it directly.
+  'gbrain-ingest',
 ]);
 
 /** Check a job name against the protected set. Normalizes whitespace first. */

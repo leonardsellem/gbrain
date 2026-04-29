@@ -26,6 +26,26 @@ writes_to:
 
 Ingest meetings, articles, media, documents, and conversations into the brain.
 
+## Async Agent-Native Entry Point
+
+For coding-agent sessions, prefer the queue-first command when ingestion should
+not add latency to the user turn:
+
+```bash
+gbrain-ingest --text "Remember this: ..." --json
+gbrain-ingest --url https://example.com/page --json
+gbrain-ingest --file ./notes/source.md --json
+```
+
+The command returns a job id and status command immediately. Enrichment,
+canonical writes, PostgreSQL import, and embeddings happen in Minions workers.
+Use `gbrain jobs get <job-id>` to inspect progress.
+
+Automatic hook capture must use `--mode signal` with distilled content only.
+Do not store raw prompts, raw transcripts, or raw tool output. Write/enrichment
+inference uses Codex OAuth with `gpt-5.4-mini`; OpenAI API keys are scoped to
+embeddings only.
+
 > **Filing rule:** Read `skills/_brain-filing-rules.md` before creating any new page.
 
 ## Contract

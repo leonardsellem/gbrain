@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { readFileSync } from 'fs';
+import { basename } from 'path';
 import { loadConfig, toEngineConfig } from './core/config.ts';
 import type { BrainEngine } from './core/engine.ts';
 import { operations, OperationError } from './core/operations.ts';
@@ -19,7 +20,7 @@ for (const op of operations) {
 }
 
 // CLI-only commands that bypass the operation layer
-const CLI_ONLY = new Set(['init', 'upgrade', 'post-upgrade', 'check-update', 'integrations', 'publish', 'check-backlinks', 'lint', 'report', 'import', 'export', 'files', 'embed', 'serve', 'call', 'config', 'doctor', 'migrate', 'eval', 'sync', 'extract', 'features', 'autopilot', 'graph-query', 'jobs', 'agent', 'apply-migrations', 'skillpack-check', 'skillpack', 'resolvers', 'integrity', 'repair-jsonb', 'orphans', 'sources', 'dream', 'check-resolvable', 'routing-eval', 'skillify', 'smoke-test', 'repos', 'code-def', 'code-refs', 'reindex-code', 'code-callers', 'code-callees', 'frontmatter', 'auth']);
+const CLI_ONLY = new Set(['init', 'upgrade', 'post-upgrade', 'check-update', 'integrations', 'publish', 'check-backlinks', 'lint', 'report', 'import', 'export', 'files', 'embed', 'serve', 'call', 'config', 'doctor', 'migrate', 'eval', 'sync', 'extract', 'features', 'autopilot', 'graph-query', 'jobs', 'agent', 'ingest', 'apply-migrations', 'skillpack-check', 'skillpack', 'resolvers', 'integrity', 'repair-jsonb', 'orphans', 'sources', 'dream', 'check-resolvable', 'routing-eval', 'skillify', 'smoke-test', 'repos', 'code-def', 'code-refs', 'reindex-code', 'code-callers', 'code-callees', 'frontmatter', 'auth']);
 
 async function main() {
   // Parse global flags (--quiet / --progress-json / --progress-interval)
@@ -29,9 +30,11 @@ async function main() {
   const { cliOpts, rest: args } = parseGlobalFlags(rawArgs);
   setCliOptions(cliOpts);
 
-  let command = args[0];
+  const invokedAs = basename(process.argv[1] || '');
+  const ingestAlias = invokedAs === 'gbrain-ingest';
+  let command = ingestAlias ? 'ingest' : args[0];
 
-  if (!command || command === '--help' || command === '-h') {
+  if (!command || (!ingestAlias && (command === '--help' || command === '-h'))) {
     printHelp();
     return;
   }
@@ -47,7 +50,7 @@ async function main() {
     return;
   }
 
-  const subArgs = args.slice(1);
+  const subArgs = ingestAlias ? args : args.slice(1);
 
   // DX alias: `ask` is a natural-language alias for `query`
   if (command === 'ask') {
@@ -486,6 +489,11 @@ async function handleCliOnly(command: string, args: string[]) {
         await runAgent(engine, args);
         break;
       }
+      case 'ingest': {
+        const { runIngest } = await import('./commands/ingest.ts');
+        await runIngest(engine, args);
+        break;
+      }
       case 'sync': {
         const { runSync } = await import('./commands/sync.ts');
         await runSync(engine, args);
@@ -640,6 +648,7 @@ SEARCH
   ask <question> [--no-expand]       Alias for query
 
 IMPORT/EXPORT
+  ingest [--text T|--url U|--file P] Enqueue async memory ingest
   import <dir> [--no-embed]          Import markdown directory
   sync [--repo <path>] [flags]       Git-to-brain incremental sync
   sync --watch [--interval N]        Continuous sync (loops until stopped)

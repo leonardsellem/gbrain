@@ -273,6 +273,41 @@ This is compiled truth content that should be chunked as compiled_truth source.
     expect(tlChunks.length).toBeGreaterThan(0);
   });
 
+  test('markdown import reuses embeddings for unchanged chunks when content changes elsewhere', async () => {
+    const existingEmbedding = new Float32Array([0.1, 0.2, 0.3]);
+    const engine = mockEngine({
+      getPage: () => Promise.resolve({ content_hash: 'old-hash' }),
+      getChunks: () => Promise.resolve([
+        {
+          chunk_index: 0,
+          chunk_text: 'Shared chunk stays the same.',
+          chunk_source: 'compiled_truth',
+          embedding: existingEmbedding,
+          token_count: 7,
+        },
+      ]),
+    });
+
+    const result = await importFromContent(engine, 'concepts/reuse', `---
+type: concept
+title: Reuse
+---
+
+Shared chunk stays the same.
+
+<!-- timeline -->
+
+New dated note.
+`, { noEmbed: true });
+
+    expect(result.status).toBe('imported');
+    const chunkCall = (engine as any)._calls.find((c: any) => c.method === 'upsertChunks');
+    const chunks = chunkCall.args[1];
+    expect(chunks[0].embedding).toBe(existingEmbedding);
+    expect(chunks[0].token_count).toBe(7);
+    expect(chunks[1].embedding).toBeUndefined();
+  });
+
   test('handles file with minimal content', async () => {
     const filePath = join(TMP, 'minimal.md');
     writeFileSync(filePath, `---

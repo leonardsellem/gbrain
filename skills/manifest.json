@@ -10,6 +10,11 @@
       "description": "Route content to specialized ingestion skills. Detects input type and delegates."
     },
     {
+      "name": "gbrain-ingest",
+      "path": "gbrain-ingest/SKILL.md",
+      "description": "Queue async GBrain ingest jobs that return immediately with job status metadata."
+    },
+    {
       "name": "query",
       "path": "query/SKILL.md",
       "description": "Answer questions using 3-layer search, synthesis, and citation propagation"

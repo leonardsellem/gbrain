@@ -179,6 +179,7 @@ HANDLER TYPES (built in)
   extract           Extract links + timeline entries; '{"mode":"all"}'
   backlinks         Check or fix back-links; '{"action":"fix"}'
   autopilot-cycle   One autopilot pass (sync+extract+embed+backlinks)
+  gbrain-ingest     Async source/signal ingest; submitted by gbrain-ingest
   shell             Run a command or argv. Requires GBRAIN_ALLOW_SHELL_JOBS=1
                     on the worker. Params: {cmd?, argv?, cwd, env?}.
                     See: docs/guides/minions-shell-jobs.md
@@ -964,6 +965,14 @@ export async function registerBuiltinHandlers(worker: MinionWorker, engine: Brai
       report,
     };
   });
+
+  {
+    const { makeIngestHandler } = await import('../core/ingest/handler.ts');
+    worker.register('gbrain-ingest', makeIngestHandler({
+      engine,
+      enableEnrichment: process.env.GBRAIN_INGEST_ENRICH !== '0',
+    }));
+  }
 
   // Shell handler is always registered. Runtime env guard lives inside the
   // handler so claimed jobs emit a clear rejection log on workers missing

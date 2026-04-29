@@ -252,16 +252,34 @@ export async function importFromContent(
     chunks.push(...fenceChunks);
   }
 
+  const existingChunks = existing ? await engine.getChunks(slug) : [];
+  const existingByKey = new Map<string, typeof existingChunks[number]>();
+  for (const ec of existingChunks) {
+    existingByKey.set(`${ec.chunk_index}:${ec.chunk_text}`, ec);
+  }
+  const needsEmbedIndexes: number[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const key = `${chunks[i]!.chunk_index}:${chunks[i]!.chunk_text}`;
+    const matched = existingByKey.get(key);
+    if (matched && matched.embedding) {
+      chunks[i]!.embedding = matched.embedding as Float32Array;
+      chunks[i]!.token_count = matched.token_count ?? undefined;
+    } else {
+      needsEmbedIndexes.push(i);
+    }
+  }
+
   // Embed BEFORE the transaction (external API call)
-  if (!opts.noEmbed && chunks.length > 0) {
+  if (!opts.noEmbed && needsEmbedIndexes.length > 0) {
     try {
-      const embeddings = await embedBatch(chunks.map(c => c.chunk_text));
-      for (let i = 0; i < chunks.length; i++) {
-        chunks[i].embedding = embeddings[i];
-        chunks[i].token_count = Math.ceil(chunks[i].chunk_text.length / 4);
+      const embeddings = await embedBatch(needsEmbedIndexes.map(i => chunks[i]!.chunk_text));
+      for (let j = 0; j < needsEmbedIndexes.length; j++) {
+        const i = needsEmbedIndexes[j]!;
+        chunks[i]!.embedding = embeddings[j]!;
+        chunks[i]!.token_count = Math.ceil(chunks[i]!.chunk_text.length / 4);
       }
     } catch (e: unknown) {
-      console.warn(`[gbrain] embedding failed for ${slug} (${chunks.length} chunks): ${e instanceof Error ? e.message : String(e)}`);
+      console.warn(`[gbrain] embedding failed for ${slug} (${needsEmbedIndexes.length} changed chunks): ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 

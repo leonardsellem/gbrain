@@ -22,6 +22,7 @@ This is the dispatcher. Skills are the implementation. **Read the skill file bef
 | "Research", "track", "extract from email", "investor updates", "donations" | `skills/data-research/SKILL.md` |
 | Share a brain page as a link | `skills/publish/SKILL.md` |
 | "validate frontmatter", "check frontmatter", "fix frontmatter", "frontmatter audit", "brain lint" | `skills/frontmatter-guard/SKILL.md` |
+| "gbrain-ingest", "remember this", "ingest into gbrain", "save this to gbrain", "preserve this in gbrain" | `skills/gbrain-ingest/SKILL.md` |
 
 ## Content & media ingestion
 
