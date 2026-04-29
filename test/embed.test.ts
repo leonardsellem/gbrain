@@ -348,6 +348,46 @@ describe('runEmbedCore --stale egress fix (SQL-side filter)', () => {
     expect(staleChunkInUpsert.embedding).toBeInstanceOf(Float32Array);
   });
 
+  test('--stale keeps same-slug pages isolated by source_id', async () => {
+    const { runEmbedCore } = await import('../src/commands/embed.ts');
+    const stale = [
+      { source_id: 'default', slug: 'docs/install/updating', chunk_index: 0, chunk_text: 'default stale', chunk_source: 'compiled_truth' as const, model: null, token_count: null },
+      { source_id: 'openclaw', slug: 'docs/install/updating', chunk_index: 0, chunk_text: 'openclaw stale', chunk_source: 'compiled_truth' as const, model: null, token_count: null },
+    ];
+    const fullChunks: Record<string, any[]> = {
+      'default:docs/install/updating': [
+        { chunk_index: 0, chunk_text: 'default stale', chunk_source: 'compiled_truth', embedded_at: null, token_count: 2 },
+        { chunk_index: 1, chunk_text: 'default fresh', chunk_source: 'compiled_truth', embedded_at: '2026-01-01', token_count: 2 },
+      ],
+      'openclaw:docs/install/updating': [
+        { chunk_index: 0, chunk_text: 'openclaw stale', chunk_source: 'compiled_truth', embedded_at: null, token_count: 2 },
+        { chunk_index: 1, chunk_text: 'openclaw fresh', chunk_source: 'compiled_truth', embedded_at: '2026-01-01', token_count: 2 },
+      ],
+    };
+    const upsertCalls: Array<{ slug: string; sourceId: string | undefined; chunks: any[] }> = [];
+    const engine = mockEngine({
+      countStaleChunks: async () => 2,
+      listStaleChunks: async () => stale,
+      getChunks: async (slug: string, sourceId?: string) => fullChunks[`${sourceId ?? 'default'}:${slug}`] || [],
+      upsertChunks: async (slug: string, chunks: any[], sourceId?: string) => {
+        upsertCalls.push({ slug, sourceId, chunks });
+      },
+    });
+
+    const result = await runEmbedCore(engine, { stale: true });
+
+    expect(result.embedded).toBe(2);
+    expect(result.pages_processed).toBe(2);
+    expect(upsertCalls.map(c => `${c.sourceId}:${c.slug}`).sort()).toEqual([
+      'default:docs/install/updating',
+      'openclaw:docs/install/updating',
+    ]);
+    for (const call of upsertCalls) {
+      const indices = call.chunks.map((c: any) => c.chunk_index);
+      expect(indices).toEqual([0, 1]);
+    }
+  });
+
   test('--stale dry-run: counts stale via countStaleChunks, reports via listStaleChunks, no embedBatch or upsertChunks', async () => {
     const { runEmbedCore } = await import('../src/commands/embed.ts');
     const stale = [

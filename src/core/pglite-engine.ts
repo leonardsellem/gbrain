@@ -546,9 +546,11 @@ export class PGLiteEngine implements BrainEngine {
   }
 
   // Chunks
-  async upsertChunks(slug: string, chunks: ChunkInput[]): Promise<void> {
+  async upsertChunks(slug: string, chunks: ChunkInput[], sourceId?: string): Promise<void> {
     // Get page_id
-    const pageResult = await this.db.query('SELECT id FROM pages WHERE slug = $1', [slug]);
+    const pageResult = sourceId
+      ? await this.db.query('SELECT id FROM pages WHERE slug = $1 AND source_id = $2', [slug, sourceId])
+      : await this.db.query('SELECT id FROM pages WHERE slug = $1', [slug]);
     if (pageResult.rows.length === 0) throw new Error(`Page not found: ${slug}`);
     const pageId = (pageResult.rows[0] as { id: number }).id;
 
@@ -633,14 +635,22 @@ export class PGLiteEngine implements BrainEngine {
     );
   }
 
-  async getChunks(slug: string): Promise<Chunk[]> {
-    const { rows } = await this.db.query(
-      `SELECT cc.* FROM content_chunks cc
-       JOIN pages p ON p.id = cc.page_id
-       WHERE p.slug = $1
-       ORDER BY cc.chunk_index`,
-      [slug]
-    );
+  async getChunks(slug: string, sourceId?: string): Promise<Chunk[]> {
+    const { rows } = sourceId
+      ? await this.db.query(
+        `SELECT cc.* FROM content_chunks cc
+         JOIN pages p ON p.id = cc.page_id
+         WHERE p.slug = $1 AND p.source_id = $2
+         ORDER BY cc.chunk_index`,
+        [slug, sourceId],
+      )
+      : await this.db.query(
+        `SELECT cc.* FROM content_chunks cc
+         JOIN pages p ON p.id = cc.page_id
+         WHERE p.slug = $1
+         ORDER BY cc.chunk_index`,
+        [slug],
+      );
     return (rows as Record<string, unknown>[]).map(r => rowToChunk(r));
   }
 
@@ -656,7 +666,7 @@ export class PGLiteEngine implements BrainEngine {
 
   async listStaleChunks(): Promise<StaleChunkRow[]> {
     const { rows } = await this.db.query(
-      `SELECT p.slug, cc.chunk_index, cc.chunk_text, cc.chunk_source,
+      `SELECT p.source_id, p.slug, cc.chunk_index, cc.chunk_text, cc.chunk_source,
               cc.model, cc.token_count
          FROM content_chunks cc
          JOIN pages p ON p.id = cc.page_id

@@ -77,6 +77,7 @@ export interface Chunk {
  * rows) embedding bytes over the wire. See `embed --stale` egress fix.
  */
 export interface StaleChunkRow {
+  source_id?: string | null;
   slug: string;
   chunk_index: number;
   chunk_text: string;

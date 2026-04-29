@@ -131,16 +131,16 @@ export interface BrainEngine {
   getEmbeddingsByChunkIds(ids: number[]): Promise<Map<number, Float32Array>>;
 
   // Chunks
-  upsertChunks(slug: string, chunks: ChunkInput[]): Promise<void>;
-  getChunks(slug: string): Promise<Chunk[]>;
+  upsertChunks(slug: string, chunks: ChunkInput[], sourceId?: string): Promise<void>;
+  getChunks(slug: string, sourceId?: string): Promise<Chunk[]>;
   /**
-   * Count chunks across the entire brain where embedded_at IS NULL.
+   * Count chunks across the entire brain where embedding IS NULL.
    * Pre-flight short-circuit for `embed --stale` so a 100%-embedded brain
    * does no further work after a single SELECT count(*) (~50 bytes wire).
    */
   countStaleChunks(): Promise<number>;
   /**
-   * Return every chunk where embedded_at IS NULL, with the metadata needed
+   * Return every chunk where embedding IS NULL, with the metadata needed
    * to call embedBatch + upsertChunks. The `embedding` column is omitted
    * by design — stale rows have NULL embeddings, so shipping them wastes
    * wire bytes for no gain. Caller groups by slug, embeds, and re-upserts.

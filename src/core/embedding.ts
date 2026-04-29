@@ -8,6 +8,8 @@
  */
 
 import OpenAI from 'openai';
+import { execFileSync } from 'child_process';
+import { platform } from 'os';
 
 const MODEL = 'text-embedding-3-large';
 const DIMENSIONS = 1536;
@@ -16,12 +18,49 @@ const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 4000;
 const MAX_DELAY_MS = 120000;
 const BATCH_SIZE = 100;
+const KEYCHAIN_SERVICE = 'gbrain-openai-embeddings';
 
 let client: OpenAI | null = null;
+let clientApiKey: string | null = null;
+let cachedKeychainApiKey: string | undefined | null = null;
+
+export interface EmbeddingApiKeyOptions {
+  includeKeychain?: boolean;
+}
+
+export function resolveEmbeddingApiKey(options: EmbeddingApiKeyOptions = {}): string | undefined {
+  const scopedKey =
+    cleanSecret(process.env.GBRAIN_EMBEDDINGS_OPENAI_API_KEY) ||
+    cleanSecret(process.env.GBRAIN_OPENAI_EMBEDDING_API_KEY);
+  if (scopedKey) return scopedKey;
+
+  if (options.includeKeychain !== false) {
+    const keychainKey = readKeychainEmbeddingApiKey();
+    if (keychainKey) return keychainKey;
+  }
+
+  if (process.env.GBRAIN_ALLOW_LEGACY_OPENAI_API_KEY_FOR_EMBEDDINGS === '1') {
+    return cleanSecret(process.env.OPENAI_API_KEY);
+  }
+
+  return undefined;
+}
+
+export function hasEmbeddingApiKey(options: EmbeddingApiKeyOptions = {}): boolean {
+  return Boolean(resolveEmbeddingApiKey(options));
+}
 
 function getClient(): OpenAI {
-  if (!client) {
-    client = new OpenAI();
+  const apiKey = resolveEmbeddingApiKey();
+  if (!apiKey) {
+    throw new Error(
+      'GBrain embedding OpenAI API key is not configured. Set GBRAIN_EMBEDDINGS_OPENAI_API_KEY for this process or store it in the macOS Keychain service gbrain-openai-embeddings.'
+    );
+  }
+
+  if (!client || clientApiKey !== apiKey) {
+    client = new OpenAI({ apiKey });
+    clientApiKey = apiKey;
   }
   return client;
 }
@@ -105,6 +144,34 @@ function sleep(ms: number): Promise<void> {
 }
 
 export { MODEL as EMBEDDING_MODEL, DIMENSIONS as EMBEDDING_DIMENSIONS };
+export { BATCH_SIZE as EMBEDDING_BATCH_SIZE };
+
+function cleanSecret(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function readKeychainEmbeddingApiKey(): string | undefined {
+  if (platform() !== 'darwin') return undefined;
+  if (cachedKeychainApiKey !== null) return cachedKeychainApiKey;
+
+  try {
+    const output = execFileSync(
+      'security',
+      ['find-generic-password', '-s', KEYCHAIN_SERVICE, '-w'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 2000,
+      },
+    );
+    cachedKeychainApiKey = cleanSecret(output);
+  } catch {
+    cachedKeychainApiKey = undefined;
+  }
+
+  return cachedKeychainApiKey;
+}
 
 /**
  * v0.20.0 Cathedral II Layer 8 (D1): USD cost per 1k tokens for

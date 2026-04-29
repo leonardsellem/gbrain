@@ -670,11 +670,13 @@ export class PostgresEngine implements BrainEngine {
   }
 
   // Chunks
-  async upsertChunks(slug: string, chunks: ChunkInput[]): Promise<void> {
+  async upsertChunks(slug: string, chunks: ChunkInput[], sourceId?: string): Promise<void> {
     const sql = this.sql;
 
     // Get page_id
-    const pages = await sql`SELECT id FROM pages WHERE slug = ${slug}`;
+    const pages = sourceId
+      ? await sql`SELECT id FROM pages WHERE slug = ${slug} AND source_id = ${sourceId}`
+      : await sql`SELECT id FROM pages WHERE slug = ${slug}`;
     if (pages.length === 0) throw new Error(`Page not found: ${slug}`);
     const pageId = pages[0].id;
 
@@ -759,14 +761,21 @@ export class PostgresEngine implements BrainEngine {
     );
   }
 
-  async getChunks(slug: string): Promise<Chunk[]> {
+  async getChunks(slug: string, sourceId?: string): Promise<Chunk[]> {
     const sql = this.sql;
-    const rows = await sql`
-      SELECT cc.* FROM content_chunks cc
-      JOIN pages p ON p.id = cc.page_id
-      WHERE p.slug = ${slug}
-      ORDER BY cc.chunk_index
-    `;
+    const rows = sourceId
+      ? await sql`
+        SELECT cc.* FROM content_chunks cc
+        JOIN pages p ON p.id = cc.page_id
+        WHERE p.slug = ${slug} AND p.source_id = ${sourceId}
+        ORDER BY cc.chunk_index
+      `
+      : await sql`
+        SELECT cc.* FROM content_chunks cc
+        JOIN pages p ON p.id = cc.page_id
+        WHERE p.slug = ${slug}
+        ORDER BY cc.chunk_index
+      `;
     return rows.map((r) => rowToChunk(r as Record<string, unknown>));
   }
 
@@ -783,7 +792,7 @@ export class PostgresEngine implements BrainEngine {
   async listStaleChunks(): Promise<StaleChunkRow[]> {
     const sql = this.sql;
     const rows = await sql`
-      SELECT p.slug, cc.chunk_index, cc.chunk_text, cc.chunk_source,
+      SELECT p.source_id, p.slug, cc.chunk_index, cc.chunk_text, cc.chunk_source,
              cc.model, cc.token_count
       FROM content_chunks cc
       JOIN pages p ON p.id = cc.page_id
