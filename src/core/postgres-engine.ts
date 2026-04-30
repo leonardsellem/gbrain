@@ -276,12 +276,17 @@ export class PostgresEngine implements BrainEngine {
   }
 
   // Pages CRUD
-  async getPage(slug: string): Promise<Page | null> {
+  async getPage(slug: string, sourceId?: string): Promise<Page | null> {
     const sql = this.sql;
-    const rows = await sql`
-      SELECT id, slug, type, title, compiled_truth, timeline, frontmatter, content_hash, created_at, updated_at
-      FROM pages WHERE slug = ${slug}
-    `;
+    const rows = sourceId
+      ? await sql`
+        SELECT id, slug, type, title, compiled_truth, timeline, frontmatter, content_hash, created_at, updated_at
+        FROM pages WHERE slug = ${slug} AND source_id = ${sourceId}
+      `
+      : await sql`
+        SELECT id, slug, type, title, compiled_truth, timeline, frontmatter, content_hash, created_at, updated_at
+        FROM pages WHERE slug = ${slug}
+      `;
     if (rows.length === 0) return null;
     return rowToPage(rows[0]);
   }
@@ -314,9 +319,13 @@ export class PostgresEngine implements BrainEngine {
     return rowToPage(rows[0]);
   }
 
-  async deletePage(slug: string): Promise<void> {
+  async deletePage(slug: string, sourceId?: string): Promise<void> {
     const sql = this.sql;
-    await sql`DELETE FROM pages WHERE slug = ${slug}`;
+    if (sourceId) {
+      await sql`DELETE FROM pages WHERE slug = ${slug} AND source_id = ${sourceId}`;
+    } else {
+      await sql`DELETE FROM pages WHERE slug = ${slug}`;
+    }
   }
 
   async listPages(filters?: PageFilters): Promise<Page[]> {
@@ -803,12 +812,19 @@ export class PostgresEngine implements BrainEngine {
     return rows as unknown as StaleChunkRow[];
   }
 
-  async deleteChunks(slug: string): Promise<void> {
+  async deleteChunks(slug: string, sourceId?: string): Promise<void> {
     const sql = this.sql;
-    await sql`
-      DELETE FROM content_chunks
-      WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
-    `;
+    if (sourceId) {
+      await sql`
+        DELETE FROM content_chunks
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug} AND source_id = ${sourceId})
+      `;
+    } else {
+      await sql`
+        DELETE FROM content_chunks
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
+      `;
+    }
   }
 
   // Links
@@ -1164,11 +1180,13 @@ export class PostgresEngine implements BrainEngine {
   }
 
   // Tags
-  async addTag(slug: string, tag: string): Promise<void> {
+  async addTag(slug: string, tag: string, sourceId?: string): Promise<void> {
     const sql = this.sql;
     // Verify page exists before attempting insert (ON CONFLICT DO NOTHING
     // swallows the "already tagged" case, but we still need to detect missing pages)
-    const page = await sql`SELECT id FROM pages WHERE slug = ${slug}`;
+    const page = sourceId
+      ? await sql`SELECT id FROM pages WHERE slug = ${slug} AND source_id = ${sourceId}`
+      : await sql`SELECT id FROM pages WHERE slug = ${slug}`;
     if (page.length === 0) throw new Error(`addTag failed: page "${slug}" not found`);
     await sql`
       INSERT INTO tags (page_id, tag)
@@ -1177,22 +1195,36 @@ export class PostgresEngine implements BrainEngine {
     `;
   }
 
-  async removeTag(slug: string, tag: string): Promise<void> {
+  async removeTag(slug: string, tag: string, sourceId?: string): Promise<void> {
     const sql = this.sql;
-    await sql`
-      DELETE FROM tags
-      WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
-        AND tag = ${tag}
-    `;
+    if (sourceId) {
+      await sql`
+        DELETE FROM tags
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug} AND source_id = ${sourceId})
+          AND tag = ${tag}
+      `;
+    } else {
+      await sql`
+        DELETE FROM tags
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
+          AND tag = ${tag}
+      `;
+    }
   }
 
-  async getTags(slug: string): Promise<string[]> {
+  async getTags(slug: string, sourceId?: string): Promise<string[]> {
     const sql = this.sql;
-    const rows = await sql`
-      SELECT tag FROM tags
-      WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
-      ORDER BY tag
-    `;
+    const rows = sourceId
+      ? await sql`
+        SELECT tag FROM tags
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug} AND source_id = ${sourceId})
+        ORDER BY tag
+      `
+      : await sql`
+        SELECT tag FROM tags
+        WHERE page_id = (SELECT id FROM pages WHERE slug = ${slug})
+        ORDER BY tag
+      `;
     return rows.map((r) => r.tag as string);
   }
 
@@ -1307,14 +1339,21 @@ export class PostgresEngine implements BrainEngine {
   }
 
   // Versions
-  async createVersion(slug: string): Promise<PageVersion> {
+  async createVersion(slug: string, sourceId?: string): Promise<PageVersion> {
     const sql = this.sql;
-    const rows = await sql`
-      INSERT INTO page_versions (page_id, compiled_truth, frontmatter)
-      SELECT id, compiled_truth, frontmatter
-      FROM pages WHERE slug = ${slug}
-      RETURNING *
-    `;
+    const rows = sourceId
+      ? await sql`
+        INSERT INTO page_versions (page_id, compiled_truth, frontmatter)
+        SELECT id, compiled_truth, frontmatter
+        FROM pages WHERE slug = ${slug} AND source_id = ${sourceId}
+        RETURNING *
+      `
+      : await sql`
+        INSERT INTO page_versions (page_id, compiled_truth, frontmatter)
+        SELECT id, compiled_truth, frontmatter
+        FROM pages WHERE slug = ${slug}
+        RETURNING *
+      `;
     if (rows.length === 0) throw new Error(`createVersion failed: page "${slug}" not found`);
     return rows[0] as unknown as PageVersion;
   }

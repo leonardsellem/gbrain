@@ -128,6 +128,23 @@ gbrain sources federate <id>
 gbrain sources unfederate <id>
 ```
 
+## DB-only reconciliation
+
+`gbrain export missing` is source-scoped. Without `--source`, it audits the
+seeded `default` source so isolated secondary sources are not accidentally
+written into the main wiki:
+
+```bash
+gbrain export missing --repo ~/brain --manifest /tmp/default-missing.json
+gbrain export missing --repo ~/yc-media --source yc-media --write \
+  --manifest /tmp/yc-media-missing.json
+```
+
+The workflow only creates missing markdown files under the target repo in
+explicit `--write` mode. It reports existing-file differences as mismatches and
+does not overwrite files, delete rows, rewrite source registrations, or move
+sync checkpoints.
+
 ## Citation format for agents
 
 When agents receive multi-source results they MUST cite pages in

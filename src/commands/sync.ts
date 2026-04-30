@@ -369,9 +369,9 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
   for (const path of unsyncableModified) {
     const slug = resolveSlugForPath(path);
     try {
-      const existing = await engine.getPage(slug);
+      const existing = await engine.getPage(slug, opts.sourceId);
       if (existing) {
-        await engine.deletePage(slug);
+        await engine.deletePage(slug, opts.sourceId);
         console.log(`  Deleted un-syncable page: ${slug}`);
       }
     } catch { /* ignore */ }
@@ -437,7 +437,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
     progress.start('sync.deletes', filtered.deleted.length);
     for (const path of filtered.deleted) {
       const slug = resolveSlugForPath(path);
-      await engine.deletePage(slug);
+      await engine.deletePage(slug, opts.sourceId);
       pagesAffected.push(slug);
       progress.tick(1, slug);
     }
@@ -461,7 +461,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
       // Reimport at new path (picks up content changes)
       const filePath = join(repoPath, to);
       if (existsSync(filePath)) {
-        const result = await importFile(engine, filePath, to, { noEmbed });
+        const result = await importFile(engine, filePath, to, { noEmbed, sourceId: opts.sourceId });
         if (result.status === 'imported') chunksCreated += result.chunks;
       }
       pagesAffected.push(newSlug);
@@ -495,7 +495,7 @@ export async function performSync(engine: BrainEngine, opts: SyncOpts): Promise<
         continue;
       }
       try {
-        const result = await importFile(engine, filePath, path, { noEmbed });
+        const result = await importFile(engine, filePath, path, { noEmbed, sourceId: opts.sourceId });
         if (result.status === 'imported') {
           chunksCreated += result.chunks;
           pagesAffected.push(result.slug);

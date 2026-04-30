@@ -35,6 +35,18 @@ OAuth with `gpt-5.4-mini` only. OpenAI API keys are not read for inference.
 Embeddings use the existing scoped embedding-key path and unchanged chunks reuse
 existing vectors.
 
+If an operator later wants to recover those database-only pages into markdown,
+run the two-stage reconciliation export from the intended brain repo:
+
+```bash
+gbrain export missing --repo /path/to/brain --manifest /tmp/gbrain-missing.json
+gbrain export missing --repo /path/to/brain --write --manifest /tmp/gbrain-missing-write.json
+```
+
+The command is conservative by default, source-scoped, and never overwrites
+existing markdown. Pass `--complete` only after reviewing skipped entries in the
+dry-run manifest.
+
 ## Status And Debugging
 
 ```bash

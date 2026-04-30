@@ -654,6 +654,8 @@ IMPORT/EXPORT
   sync --watch [--interval N]        Continuous sync (loops until stopped)
   sync --install-cron                Install persistent sync daemon
   export [--dir ./out/]              Export to markdown
+  export missing --repo <path>       Audit/export DB-only markdown pages
+        [--write] [--complete] [--source id] [--manifest path] [--json]
 
 FILES
   files list [slug]                  List stored files

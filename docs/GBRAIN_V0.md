@@ -260,6 +260,8 @@ gbrain stats                               # brain statistics
 gbrain health                              # brain health dashboard
 gbrain import <dir> [--no-embed]          # import from markdown directory
 gbrain export [--dir ./export/]           # export to markdown (round-trip)
+gbrain export missing --repo <path>       # audit/export DB-only markdown pages
+  [--write] [--complete] [--source id] [--manifest path] [--json]
 gbrain embed [<slug>|--all|--stale]       # generate/refresh embeddings
 gbrain serve                               # MCP server (stdio)
 gbrain call <tool> '<json>'               # raw tool invocation

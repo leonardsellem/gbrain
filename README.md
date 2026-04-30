@@ -618,6 +618,8 @@ IMPORT
   gbrain import <dir> [--no-embed]      Import markdown (idempotent)
   gbrain sync [--repo <path>]           Git-to-brain incremental sync
   gbrain export [--dir ./out/]          Export to markdown
+  gbrain export missing --repo <path>   Audit DB-only pages missing from a repo
+      [--write] [--complete] [--source id] [--manifest path] [--json]
 
 FILES
   gbrain files list|upload|sync|verify  File storage operations

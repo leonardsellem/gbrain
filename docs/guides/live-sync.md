@@ -99,6 +99,26 @@ Sync only indexes "syncable" markdown files. These are excluded by design:
 Concurrent runs are safe. Two syncs on the same commit no-op because content
 hashes match. If both a cron and `--watch` fire simultaneously, no conflict.
 
+### Reconciling DB-only Pages
+
+Some workflows can create PostgreSQL pages before or without a markdown file,
+for example an ingest job whose source has no `local_path`, an enrichment write,
+or a sync checkpoint that already advanced past the commit that would have
+introduced a file. Normal sync is commit-delta based, so use the explicit
+missing export workflow when the database has pages the repo does not:
+
+```bash
+gbrain export missing --repo /path/to/brain --manifest /tmp/gbrain-missing.json
+gbrain export missing --repo /path/to/brain --write --manifest /tmp/gbrain-missing-write.json
+```
+
+The default mode audits the `default` source and writes nothing. `--write` is
+required to create files, and it never deletes database rows, sync checkpoints,
+git history, or existing markdown. Conservative mode skips operational noise
+such as archives, test pages, attachments, daily/chat pages, email/slack/event
+pages, and code pages while recording each skip in the manifest. Use
+`--complete` only after reviewing the dry-run manifest.
+
 ## Tricky Spots
 
 1. **Always chain sync + embed.** Running `gbrain sync` without
@@ -126,7 +146,8 @@ hashes match. If both a cron and `--watch` fire simultaneously, no conflict.
 2. **Compare page count to file count.** Run `gbrain stats` and count the
    syncable markdown files in the brain repo. The page count in the database
    should match. If they diverge, files are being silently skipped (likely
-   a Transaction mode pooler issue).
+   a Transaction mode pooler issue) or DB-only pages need a reconciliation
+   audit with `gbrain export missing --repo <path>`.
 
 3. **Check embedded chunk count.** In `gbrain stats`, the embedded chunk
    count should be close to the total chunk count. A large gap means
