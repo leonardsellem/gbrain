@@ -103,3 +103,37 @@ These apply to ALL brain-writing skills:
 - `skills/conventions/subagent-routing.md` — when to use Minions vs inline work
 - `skills/_brain-filing-rules.md` — where files go
 - `skills/_output-rules.md` — output quality standards
+
+<!-- gbrain:skillpack:begin -->
+
+<!-- Installed by gbrain 0.19.0 — do not hand-edit between markers. -->
+
+| Trigger | Skill |
+|---------|-------|
+| "brain-ops" | `skills/brain-ops/SKILL.md` |
+| "briefing" | `skills/briefing/SKILL.md` |
+| "citation-fixer" | `skills/citation-fixer/SKILL.md` |
+| "cron-scheduler" | `skills/cron-scheduler/SKILL.md` |
+| "cross-modal-review" | `skills/cross-modal-review/SKILL.md` |
+| "daily-task-manager" | `skills/daily-task-manager/SKILL.md` |
+| "daily-task-prep" | `skills/daily-task-prep/SKILL.md` |
+| "data-research" | `skills/data-research/SKILL.md` |
+| "enrich" | `skills/enrich/SKILL.md` |
+| "idea-ingest" | `skills/idea-ingest/SKILL.md` |
+| "ingest" | `skills/ingest/SKILL.md` |
+| "maintain" | `skills/maintain/SKILL.md` |
+| "media-ingest" | `skills/media-ingest/SKILL.md` |
+| "meeting-ingestion" | `skills/meeting-ingestion/SKILL.md` |
+| "minion-orchestrator" | `skills/minion-orchestrator/SKILL.md` |
+| "query" | `skills/query/SKILL.md` |
+| "repo-architecture" | `skills/repo-architecture/SKILL.md` |
+| "reports" | `skills/reports/SKILL.md` |
+| "signal-detector" | `skills/signal-detector/SKILL.md` |
+| "skill-creator" | `skills/skill-creator/SKILL.md` |
+| "skillify" | `skills/skillify/SKILL.md` |
+| "skillpack-check" | `skills/skillpack-check/SKILL.md` |
+| "soul-audit" | `skills/soul-audit/SKILL.md` |
+| "testing" | `skills/testing/SKILL.md` |
+| "webhook-transforms" | `skills/webhook-transforms/SKILL.md` |
+
+<!-- gbrain:skillpack:end -->
