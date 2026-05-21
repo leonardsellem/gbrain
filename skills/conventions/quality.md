@@ -13,6 +13,18 @@ Every fact written to a brain page must carry an inline `[Source: ...]` citation
 - **Social media:** `[Source: X/@handle, YYYY-MM-DD](URL)`
 - **Synthesis:** `[Source: compiled from {sources}]`
 
+### Obsidian-safe source envelopes
+
+Never put an Obsidian wikilink or nested Markdown link inside `[Source: ...]`.
+The source envelope is plain text only. For internal sources, put the wikilink
+adjacent to the citation:
+
+- Internal source: `[[sources/readwise/example|Readwise highlight]] [Source: Readwise highlight, 2026-05-21]`
+- External whole-citation link: `[Source: X/@handle, 2026-05-21](https://example.com/post)`
+
+If a citation contains multiple source wikilinks or unclear source/date pairing,
+report it as ambiguous instead of guessing.
+
 ### Source precedence (highest to lowest)
 
 1. User's direct statements (highest authority)

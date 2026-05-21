@@ -41,6 +41,11 @@ This skill guarantees:
 - Every inbound signal triggers the READ → ENRICH → WRITE loop
 - Every outbound response checks brain for relevant context
 - Source attribution on every fact written (inline `[Source: ...]` citations)
+- Obsidian-safe source envelopes: never put an Obsidian wikilink or nested
+  Markdown link inside `[Source: ...]`. Use
+  `[[sources/readwise/example|Readwise highlight]] [Source: Readwise highlight, 2026-05-21]`
+  for internal source navigation; whole-citation external links such as
+  `[Source: X/@handle, 2026-05-21](https://example.com/post)` remain valid.
 - User's direct statements are highest-authority data
 - Back-links maintained on every brain write (Iron Law)
 

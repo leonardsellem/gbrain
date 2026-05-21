@@ -34,7 +34,14 @@ This skill guarantees:
    - Citations missing date
    - Citations missing source type
    - Citations with wrong format
+   - Citations that put Obsidian wikilinks or nested Markdown links inside
+     `[Source: ...]`
 3. **Fix format issues.** Rewrite malformed citations to match `skills/conventions/quality.md`.
+   Move a deterministic internal source wikilink adjacent to the plain citation:
+   `[[sources/readwise/example|Readwise highlight]] [Source: Readwise highlight, 2026-05-21]`.
+   Whole-citation external links remain valid:
+   `[Source: X/@handle, 2026-05-21](https://example.com/post)`.
+   If source/date pairing is ambiguous, report it instead of guessing.
 4. **Report results.** Count: pages scanned, citations found, issues fixed, remaining gaps.
 
 ## Output Format

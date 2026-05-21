@@ -73,6 +73,12 @@ Every fact written to a brain page must carry an inline `[Source: ...]` citation
 - **Social media:** `[Source: X/@handle, YYYY-MM-DD](URL)` (include link)
 - **Synthesis:** `[Source: compiled from {sources}]`
 
+Never put an Obsidian wikilink or nested Markdown link inside `[Source: ...]`.
+For internal sources, keep the wikilink adjacent to a plain citation:
+`[[sources/readwise/example|Readwise highlight]] [Source: Readwise highlight, 2026-05-21]`.
+Whole-citation external links remain valid:
+`[Source: X/@handle, 2026-05-21](https://example.com/post)`.
+
 ## Phases
 
 > **Router note:** This skill is a router. For specialized ingestion, see: idea-ingest, media-ingest, meeting-ingestion.
